@@ -56,9 +56,14 @@ export default function RecipesPage() {
 
   const fetchRecipes = async () => {
     try {
+      console.log("Fetching recipes...")
       const response = await fetch("/api/recipes")
+      console.log("Recipes response status:", response.status)
+      
       if (response.ok) {
         const data = await response.json()
+        console.log("Recipes fetched:", data)
+        console.log("Number of recipes:", data.length)
         setRecipes(data)
         
         // Extract unique tags
@@ -69,6 +74,9 @@ export default function RecipesPage() {
           })
         })
         setAvailableTags(Array.from(tags))
+      } else {
+        const errorData = await response.json()
+        console.error("Failed to fetch recipes:", errorData)
       }
     } catch (error) {
       console.error("Error fetching recipes:", error)

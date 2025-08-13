@@ -7,6 +7,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
+interface StructuredIngredient {
+  quantity: string
+  unit: string
+  name: string
+}
 
 interface Recipe {
   id?: string
@@ -21,16 +28,52 @@ interface Recipe {
   tags?: Array<{ tag: { name: string } }>
 }
 
+// Dropdown options
+const QUANTITIES = [
+  "1/4", "1/3", "1/2", "3/4", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
+  "11", "12", "13", "14", "15", "16", "17", "18", "19", "20"
+]
+
+const UNITS = [
+  "ea", "oz", "tsp", "tbsp", "cup", "pint", "qt", "gallon", "lb", "g", "kg", "ml", "l"
+]
+
 interface RecipeFormProps {
   recipe?: Recipe
   onSave?: () => void
+}
+
+// Helper function to parse existing ingredients
+const parseIngredients = (ingredients: string[]): StructuredIngredient[] => {
+  return ingredients.map(ing => {
+    // Try to parse existing ingredients - this is a simple approach
+    const parts = ing.trim().split(' ')
+    if (parts.length >= 3) {
+      return {
+        quantity: parts[0],
+        unit: parts[1],
+        name: parts.slice(2).join(' ')
+      }
+    }
+    return {
+      quantity: "1",
+      unit: "ea",
+      name: ing || ""
+    }
+  })
+}
+
+// Helper function to convert structured ingredients back to strings
+const formatIngredients = (structuredIngredients: StructuredIngredient[]): string[] => {
+  return structuredIngredients
+    .filter(ing => ing.name.trim() !== "") // Only include ingredients with names
+    .map(ing => `${ing.quantity} ${ing.unit} ${ing.name}`.trim())
 }
 
 export function RecipeForm({ recipe, onSave }: RecipeFormProps) {
   const [formData, setFormData] = useState({
     title: recipe?.title || "",
     description: recipe?.description || "",
-    ingredients: recipe?.ingredients || [""],
     instructions: recipe?.instructions || [""],
     prepTime: recipe?.prepTime || undefined,
     cookTime: recipe?.cookTime || undefined,
@@ -38,30 +81,33 @@ export function RecipeForm({ recipe, onSave }: RecipeFormProps) {
     imageUrl: recipe?.imageUrl || "",
     tags: recipe?.tags?.map(t => t.tag.name) || [],
   })
+  
+  const [structuredIngredients, setStructuredIngredients] = useState<StructuredIngredient[]>(() => {
+    if (recipe?.ingredients && recipe.ingredients.length > 0) {
+      return parseIngredients(recipe.ingredients)
+    }
+    return [{ quantity: "1", unit: "ea", name: "" }]
+  })
+  
   const [newTag, setNewTag] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const router = useRouter()
 
   const addIngredient = () => {
-    setFormData(prev => ({
-      ...prev,
-      ingredients: [...prev.ingredients, ""]
-    }))
+    setStructuredIngredients(prev => [...prev, { quantity: "1", unit: "ea", name: "" }])
   }
 
   const removeIngredient = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      ingredients: prev.ingredients.filter((_, i) => i !== index)
-    }))
+    setStructuredIngredients(prev => prev.filter((_, i) => i !== index))
   }
 
-  const updateIngredient = (index: number, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      ingredients: prev.ingredients.map((ing, i) => i === index ? value : ing)
-    }))
+  const updateIngredient = (index: number, field: keyof StructuredIngredient, value: string) => {
+    setStructuredIngredients(prev => 
+      prev.map((ing, i) => 
+        i === index ? { ...ing, [field]: value } : ing
+      )
+    )
   }
 
   const addInstruction = () => {
@@ -110,10 +156,15 @@ export function RecipeForm({ recipe, onSave }: RecipeFormProps) {
     setError("")
 
     try {
-      // Filter out empty ingredients and instructions
+      // Convert structured ingredients to strings and filter out empty ones
+      const ingredients = formatIngredients(structuredIngredients)
+      
+      console.log("Submitting recipe with ingredients:", ingredients)
+      console.log("Structured ingredients:", structuredIngredients)
+      
       const cleanedData = {
         ...formData,
-        ingredients: formData.ingredients.filter(ing => ing.trim() !== ""),
+        ingredients,
         instructions: formData.instructions.filter(inst => inst.trim() !== ""),
         prepTime: formData.prepTime || undefined,
         cookTime: formData.cookTime || undefined,
@@ -121,8 +172,12 @@ export function RecipeForm({ recipe, onSave }: RecipeFormProps) {
         imageUrl: formData.imageUrl || "",
       }
 
+      console.log("Final data being sent:", cleanedData)
+
       const url = recipe?.id ? `/api/recipes/${recipe.id}` : "/api/recipes"
       const method = recipe?.id ? "PUT" : "POST"
+
+      console.log("Making request to:", url, "with method:", method)
 
       const response = await fetch(url, {
         method,
@@ -132,7 +187,11 @@ export function RecipeForm({ recipe, onSave }: RecipeFormProps) {
         body: JSON.stringify(cleanedData),
       })
 
+      console.log("Response status:", response.status)
+      
       if (response.ok) {
+        const result = await response.json()
+        console.log("Recipe created successfully:", result)
         if (onSave) {
           onSave()
         } else {
@@ -140,9 +199,11 @@ export function RecipeForm({ recipe, onSave }: RecipeFormProps) {
         }
       } else {
         const data = await response.json()
+        console.error("API Error:", data)
         setError(data.error || "Something went wrong")
       }
     } catch (error) {
+      console.error("Submit error:", error)
       setError("An error occurred")
     } finally {
       setIsLoading(false)
@@ -239,15 +300,56 @@ export function RecipeForm({ recipe, onSave }: RecipeFormProps) {
                 Add Ingredient
               </Button>
             </div>
-            {formData.ingredients.map((ingredient, index) => (
-              <div key={index} className="flex gap-2">
-                <Input
-                  value={ingredient}
-                  onChange={(e) => updateIngredient(index, e.target.value)}
-                  placeholder={`Ingredient ${index + 1}`}
-                  disabled={isLoading}
-                />
-                {formData.ingredients.length > 1 && (
+            {structuredIngredients.map((ingredient, index) => (
+              <div key={index} className="flex gap-2 items-end">
+                <div className="w-20">
+                  <Label className="text-xs text-gray-500">Quantity</Label>
+                  <Select
+                    value={ingredient.quantity}
+                    onValueChange={(value) => updateIngredient(index, 'quantity', value)}
+                    disabled={isLoading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Qty" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {QUANTITIES.map((qty) => (
+                        <SelectItem key={qty} value={qty}>
+                          {qty}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="w-24">
+                  <Label className="text-xs text-gray-500">Unit</Label>
+                  <Select
+                    value={ingredient.unit}
+                    onValueChange={(value) => updateIngredient(index, 'unit', value)}
+                    disabled={isLoading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Unit" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {UNITS.map((unit) => (
+                        <SelectItem key={unit} value={unit}>
+                          {unit}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex-1">
+                  <Label className="text-xs text-gray-500">Ingredient</Label>
+                  <Input
+                    value={ingredient.name}
+                    onChange={(e) => updateIngredient(index, 'name', e.target.value)}
+                    placeholder="e.g., chicken breast, diced"
+                    disabled={isLoading}
+                  />
+                </div>
+                {structuredIngredients.length > 1 && (
                   <Button type="button" variant="outline" size="sm" onClick={() => removeIngredient(index)} disabled={isLoading}>
                     Remove
                   </Button>

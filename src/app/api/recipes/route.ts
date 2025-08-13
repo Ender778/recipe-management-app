@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
       .from('Recipe')
       .select(`
         *,
-        RecipeTag!inner(
+        RecipeTag(
           Tag(*)
         )
       `)

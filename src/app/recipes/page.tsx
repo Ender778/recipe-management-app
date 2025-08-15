@@ -5,13 +5,17 @@ import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Navbar } from "@/components/navigation/navbar"
 import { RecipeCard } from "@/components/recipes/recipe-card"
+import { RecipeListItem } from "@/components/recipes/recipe-list-item"
 import { ChatInterface } from "@/components/chat/chat-interface"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { Label } from "@/components/ui/label"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
-import { Search, Plus, X, MessageCircle } from "lucide-react"
+import { Search, Plus, X, MessageCircle, Grid3X3, List, LayoutGrid } from "lucide-react"
 import Link from "next/link"
+
+type MealType = 'BREAKFAST' | 'LUNCH' | 'DINNER' | 'DESSERT' | 'SNACK'
 
 interface Recipe {
   id: string
@@ -23,6 +27,7 @@ interface Recipe {
   cookTime?: number
   servings?: number
   imageUrl?: string
+  mealType: MealType
   tags?: Array<{ tag: { name: string } }>
   createdAt: string
   updatedAt: string
@@ -37,6 +42,8 @@ export default function RecipesPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [availableTags, setAvailableTags] = useState<string[]>([])
+  const [viewMode, setViewMode] = useState<'card' | 'list'>('card')
+  const [sortByMealType, setSortByMealType] = useState(false)
 
   useEffect(() => {
     if (status !== "loading" && !session) {
@@ -136,6 +143,44 @@ export default function RecipesPage() {
     )
   }
 
+  const getSortedRecipes = () => {
+    if (!sortByMealType) {
+      // Alphabetical sorting
+      return [...filteredRecipes].sort((a, b) => a.title.localeCompare(b.title))
+    } else {
+      // Group by meal type, then sort alphabetically within each group
+      const mealTypeOrder: MealType[] = ['BREAKFAST', 'LUNCH', 'DINNER', 'DESSERT', 'SNACK']
+      return [...filteredRecipes].sort((a, b) => {
+        const mealTypeComparison = mealTypeOrder.indexOf(a.mealType) - mealTypeOrder.indexOf(b.mealType)
+        if (mealTypeComparison !== 0) {
+          return mealTypeComparison
+        }
+        return a.title.localeCompare(b.title)
+      })
+    }
+  }
+
+  const getGroupedRecipes = () => {
+    if (!sortByMealType) {
+      return { ungrouped: getSortedRecipes() }
+    }
+
+    const grouped: Record<string, Recipe[]> = {}
+    const mealTypeOrder: MealType[] = ['BREAKFAST', 'LUNCH', 'DINNER', 'DESSERT', 'SNACK']
+    
+    // Initialize groups
+    mealTypeOrder.forEach(mealType => {
+      grouped[mealType] = []
+    })
+
+    // Group recipes
+    getSortedRecipes().forEach(recipe => {
+      grouped[recipe.mealType].push(recipe)
+    })
+
+    return grouped
+  }
+
   if (status === "loading" || loading) {
     return (
       <>
@@ -183,6 +228,45 @@ export default function RecipesPage() {
               />
             </div>
 
+            {/* View and Sort Controls */}
+            <div className="flex flex-wrap items-center gap-4 p-4 bg-white rounded-lg border border-gray-200">
+              {/* View Type Filter - Desktop/Tablet Only */}
+              <div className="hidden md:flex items-center space-x-2">
+                <Label className="text-sm font-medium text-gray-700">View:</Label>
+                <div className="flex border rounded-lg">
+                  <Button
+                    variant={viewMode === 'card' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setViewMode('card')}
+                    className="rounded-r-none"
+                  >
+                    <LayoutGrid className="h-4 w-4 mr-1" />
+                    Cards
+                  </Button>
+                  <Button
+                    variant={viewMode === 'list' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setViewMode('list')}
+                    className="rounded-l-none border-l"
+                  >
+                    <List className="h-4 w-4 mr-1" />
+                    List
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Label className="text-sm font-medium text-gray-700">Sort:</Label>
+                <Button
+                  variant={sortByMealType ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSortByMealType(!sortByMealType)}
+                >
+                  {sortByMealType ? 'Meal Type Sections' : 'Alphabetical'}
+                </Button>
+              </div>
+            </div>
+
             {/* Tag Filters */}
             {availableTags.length > 0 && (
               <div className="space-y-2">
@@ -215,16 +299,97 @@ export default function RecipesPage() {
             )}
           </div>
 
-          {/* Recipes Grid */}
+          {/* Recipes Display */}
           {filteredRecipes.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredRecipes.map((recipe) => (
-                <RecipeCard
-                  key={recipe.id}
-                  recipe={recipe}
-                  onDelete={handleDeleteRecipe}
-                />
-              ))}
+            <div>
+              {sortByMealType ? (
+                // Meal Type Sections View
+                Object.entries(getGroupedRecipes()).map(([mealType, mealRecipes]) => {
+                  if (mealType === 'ungrouped' || mealRecipes.length === 0) return null
+                  
+                  return (
+                    <div key={mealType} className="mb-8">
+                      <h2 className="text-xl font-semibold text-gray-900 mb-4 border-b border-gray-200 pb-2">
+                        {mealType.charAt(0) + mealType.slice(1).toLowerCase()} ({mealRecipes.length})
+                      </h2>
+                      {/* Mobile List View */}
+                      <div className="md:hidden space-y-4">
+                        {mealRecipes.map((recipe) => (
+                          <RecipeListItem
+                            key={recipe.id}
+                            recipe={recipe}
+                            onDelete={handleDeleteRecipe}
+                          />
+                        ))}
+                      </div>
+                      
+                      {/* Desktop View - respects viewMode toggle */}
+                      <div className="hidden md:block">
+                        {viewMode === 'card' ? (
+                          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            {mealRecipes.map((recipe) => (
+                              <RecipeCard
+                                key={recipe.id}
+                                recipe={recipe}
+                                onDelete={handleDeleteRecipe}
+                              />
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            {mealRecipes.map((recipe) => (
+                              <RecipeListItem
+                                key={recipe.id}
+                                recipe={recipe}
+                                onDelete={handleDeleteRecipe}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })
+              ) : (
+                // Standard View (List on mobile, viewMode toggle on desktop)
+                <>
+                  {/* Mobile List View */}
+                  <div className="md:hidden space-y-4">
+                    {getSortedRecipes().map((recipe) => (
+                      <RecipeListItem
+                        key={recipe.id}
+                        recipe={recipe}
+                        onDelete={handleDeleteRecipe}
+                      />
+                    ))}
+                  </div>
+                  
+                  {/* Desktop View - respects viewMode toggle */}
+                  <div className="hidden md:block">
+                    {viewMode === 'card' ? (
+                      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        {getSortedRecipes().map((recipe) => (
+                          <RecipeCard
+                            key={recipe.id}
+                            recipe={recipe}
+                            onDelete={handleDeleteRecipe}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {getSortedRecipes().map((recipe) => (
+                          <RecipeListItem
+                            key={recipe.id}
+                            recipe={recipe}
+                            onDelete={handleDeleteRecipe}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           ) : (
             <div className="text-center py-12">
@@ -250,8 +415,8 @@ export default function RecipesPage() {
           <ChatInterface
             trigger={
               <Button size="lg" className="rounded-full shadow-lg">
-                <MessageCircle className="h-5 w-5 mr-2" />
-                Recipe Assistant
+                <MessageCircle className="h-5 w-5 md:mr-2" />
+                <span className="hidden md:inline">Recipe Assistant</span>
               </Button>
             }
           />

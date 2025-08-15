@@ -22,14 +22,16 @@ export function Navbar() {
           <div className="flex items-center space-x-4">
             {session ? (
               <>
-                <ChatInterface
-                  trigger={
-                    <Button variant="outline" size="sm">
-                      <MessageCircle className="h-4 w-4 mr-2" />
-                      AI Assistant
-                    </Button>
-                  }
-                />
+                <div className="hidden md:block">
+                  <ChatInterface
+                    trigger={
+                      <Button variant="outline" size="sm">
+                        <MessageCircle className="h-4 w-4 mr-2" />
+                        AI Assistant
+                      </Button>
+                    }
+                  />
+                </div>
                 <span className="text-sm text-gray-700">
                   Welcome, {session.user?.name || session.user?.email}
                 </span>

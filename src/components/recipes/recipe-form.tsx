@@ -15,6 +15,8 @@ interface StructuredIngredient {
   name: string
 }
 
+type MealType = 'BREAKFAST' | 'LUNCH' | 'DINNER' | 'DESSERT' | 'SNACK'
+
 interface Recipe {
   id?: string
   title: string
@@ -25,6 +27,7 @@ interface Recipe {
   cookTime?: number
   servings?: number
   imageUrl?: string
+  mealType: MealType
   tags?: Array<{ tag: { name: string } }>
 }
 
@@ -36,6 +39,14 @@ const QUANTITIES = [
 
 const UNITS = [
   "ea", "oz", "tsp", "tbsp", "cup", "pint", "qt", "gallon", "lb", "g", "kg", "ml", "l"
+]
+
+const MEAL_TYPES: { value: MealType; label: string }[] = [
+  { value: 'BREAKFAST', label: 'Breakfast' },
+  { value: 'LUNCH', label: 'Lunch' },
+  { value: 'DINNER', label: 'Dinner' },
+  { value: 'DESSERT', label: 'Dessert' },
+  { value: 'SNACK', label: 'Snack' }
 ]
 
 interface RecipeFormProps {
@@ -79,6 +90,7 @@ export function RecipeForm({ recipe, onSave }: RecipeFormProps) {
     cookTime: recipe?.cookTime || undefined,
     servings: recipe?.servings || undefined,
     imageUrl: recipe?.imageUrl || "",
+    mealType: recipe?.mealType || 'BREAKFAST' as MealType,
     tags: recipe?.tags?.map(t => t.tag.name) || [],
   })
   
@@ -244,6 +256,26 @@ export function RecipeForm({ recipe, onSave }: RecipeFormProps) {
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
               disabled={isLoading}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="mealType">Meal Type *</Label>
+            <Select
+              value={formData.mealType}
+              onValueChange={(value) => setFormData(prev => ({ ...prev, mealType: value as MealType }))}
+              disabled={isLoading}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select meal type" />
+              </SelectTrigger>
+              <SelectContent>
+                {MEAL_TYPES.map((type) => (
+                  <SelectItem key={type.value} value={type.value}>
+                    {type.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="grid grid-cols-3 gap-4">

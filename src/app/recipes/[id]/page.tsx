@@ -241,7 +241,28 @@ export default function RecipePage() {
               </Link>
             </Button>
 
-            <div className="flex justify-between items-start">
+            {/* Mobile Layout */}
+            <div className="md:hidden">
+              <h1 className="text-4xl font-bold text-gray-900 mb-2">{recipe.title}</h1>
+              {recipe.description && (
+                <p className="text-lg text-gray-600 mb-4">{recipe.description}</p>
+              )}
+              <div className="flex space-x-2 mb-4">
+                <Button asChild size="sm" className="h-8 px-3 text-sm">
+                  <Link href={`/recipes/${recipe.id}/edit`}>
+                    <Edit className="h-3 w-3 mr-1" />
+                    Edit
+                  </Link>
+                </Button>
+                <Button variant="destructive" onClick={handleDelete} size="sm" className="h-8 px-3 text-sm">
+                  <Trash2 className="h-3 w-3 mr-1" />
+                  Delete
+                </Button>
+              </div>
+            </div>
+
+            {/* Desktop Layout */}
+            <div className="hidden md:flex justify-between items-start">
               <div className="flex-1">
                 <h1 className="text-4xl font-bold text-gray-900 mb-2">{recipe.title}</h1>
                 {recipe.description && (

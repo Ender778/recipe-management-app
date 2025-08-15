@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Clock, Users, Edit, Trash2 } from "lucide-react"
 import Link from "next/link"
 
+type MealType = 'BREAKFAST' | 'LUNCH' | 'DINNER' | 'DESSERT' | 'SNACK'
+
 interface Recipe {
   id: string
   title: string
@@ -16,6 +18,7 @@ interface Recipe {
   cookTime?: number
   servings?: number
   imageUrl?: string
+  mealType: MealType
   tags?: Array<{ tag: { name: string } }>
   createdAt: string
   updatedAt: string
@@ -28,47 +31,44 @@ interface RecipeCardProps {
 
 export function RecipeCard({ recipe, onDelete }: RecipeCardProps) {
   const totalTime = (recipe.prepTime || 0) + (recipe.cookTime || 0)
+  
+  const getMealTypeBadgeColor = (mealType: MealType) => {
+    switch (mealType) {
+      case 'BREAKFAST': return 'bg-yellow-100 text-yellow-800'
+      case 'LUNCH': return 'bg-green-100 text-green-800'
+      case 'DINNER': return 'bg-blue-100 text-blue-800'
+      case 'DESSERT': return 'bg-pink-100 text-pink-800'
+      case 'SNACK': return 'bg-purple-100 text-purple-800'
+      default: return 'bg-gray-100 text-gray-800'
+    }
+  }
 
   return (
-    <Card className="h-full flex flex-col hover:shadow-md transition-shadow">
-      {recipe.imageUrl && (
-        <div className="aspect-video relative overflow-hidden rounded-t-lg">
-          <img
-            src={recipe.imageUrl}
-            alt={recipe.title}
-            className="w-full h-full object-cover"
-          />
-        </div>
-      )}
-      
-      <CardHeader className="flex-1">
-        <div className="flex justify-between items-start">
-          <CardTitle className="line-clamp-2 text-lg">{recipe.title}</CardTitle>
-          <div className="flex space-x-1 ml-2">
-            <Button variant="ghost" size="sm" asChild>
-              <Link href={`/recipes/${recipe.id}/edit`}>
-                <Edit className="h-4 w-4" />
-              </Link>
-            </Button>
-            {onDelete && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onDelete(recipe.id)}
-                className="text-red-600 hover:text-red-700"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-        </div>
+    <Link href={`/recipes/${recipe.id}`}>
+      <Card className="h-full flex flex-col hover:shadow-md transition-shadow cursor-pointer relative">
+        <Badge className={`${getMealTypeBadgeColor(recipe.mealType)} text-xs absolute top-3 right-3 z-10`}>
+          {recipe.mealType.charAt(0) + recipe.mealType.slice(1).toLowerCase()}
+        </Badge>
         
-        {recipe.description && (
-          <p className="text-sm text-gray-600 line-clamp-2 mt-2">
-            {recipe.description}
-          </p>
+        {recipe.imageUrl && (
+          <div className="aspect-video relative overflow-hidden rounded-t-lg">
+            <img
+              src={recipe.imageUrl}
+              alt={recipe.title}
+              className="w-full h-full object-cover"
+            />
+          </div>
         )}
-      </CardHeader>
+        
+        <CardHeader className="flex-1">
+          <CardTitle className="line-clamp-2 text-lg">{recipe.title}</CardTitle>
+          
+          {recipe.description && (
+            <p className="text-sm text-gray-600 line-clamp-2 mt-2">
+              {recipe.description}
+            </p>
+          )}
+        </CardHeader>
 
       <CardContent className="space-y-4">
         <div className="flex items-center space-x-4 text-sm text-gray-500">
@@ -79,7 +79,7 @@ export function RecipeCard({ recipe, onDelete }: RecipeCardProps) {
             </div>
           )}
           {recipe.servings && (
-            <div className="flex items-center space-x-1">
+            <div className="hidden md:flex items-center space-x-1">
               <Users className="h-4 w-4" />
               <span>{recipe.servings} servings</span>
             </div>
@@ -100,13 +100,8 @@ export function RecipeCard({ recipe, onDelete }: RecipeCardProps) {
             )}
           </div>
         )}
-
-        <div className="pt-2">
-          <Button asChild className="w-full">
-            <Link href={`/recipes/${recipe.id}`}>View Recipe</Link>
-          </Button>
-        </div>
       </CardContent>
-    </Card>
+      </Card>
+    </Link>
   )
 }

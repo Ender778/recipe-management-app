@@ -13,6 +13,7 @@ const createRecipeSchema = z.object({
   cookTime: z.number().min(0).optional(),
   servings: z.number().min(1).optional(),
   imageUrl: z.string().url().optional().or(z.literal("")),
+  mealType: z.enum(['BREAKFAST', 'LUNCH', 'DINNER', 'DESSERT', 'SNACK']),
   tags: z.array(z.string()).optional(),
 })
 
@@ -103,6 +104,7 @@ export async function POST(req: NextRequest) {
         cookTime: data.cookTime,
         servings: data.servings,
         imageUrl: data.imageUrl || null,
+        mealType: data.mealType,
         userId: session.user.id,
       })
       .select()

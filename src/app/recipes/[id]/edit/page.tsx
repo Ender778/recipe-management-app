@@ -16,6 +16,7 @@ interface Recipe {
   cookTime?: number
   servings?: number
   imageUrl?: string
+  mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER' | 'DESSERT' | 'SNACK'
   tags?: Array<{ tag: { name: string } }>
   createdAt: string
   updatedAt: string

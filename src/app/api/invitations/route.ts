@@ -33,8 +33,16 @@ export async function POST(request: NextRequest) {
       .eq('permission', 'WRITE')
       .limit(1)
 
-    if (booksError || !userBooks || userBooks.length === 0) {
-      return NextResponse.json({ error: "You don't have a recipe book to invite users to" }, { status: 403 })
+    console.log("User books query:", { userBooks, booksError, userId: session.user.id })
+
+    if (booksError) {
+      console.error("Database error fetching user books:", booksError)
+      return NextResponse.json({ error: "Database error" }, { status: 500 })
+    }
+
+    if (!userBooks || userBooks.length === 0) {
+      console.log("No recipe books found for user")
+      return NextResponse.json({ error: "You don't have a recipe book to invite users to. Please create some recipes first." }, { status: 403 })
     }
 
     const bookId = userBooks[0].bookId
@@ -53,6 +61,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create invitation
+    const now = new Date().toISOString()
     const { data: invitation, error: invitationError } = await supabaseAdmin
       .from('BookInvitation')
       .insert({
@@ -61,6 +70,8 @@ export async function POST(request: NextRequest) {
         invitedById: session.user.id,
         invitedUserEmail,
         permission,
+        createdAt: now,
+        updatedAt: now,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
       })
       .select(`

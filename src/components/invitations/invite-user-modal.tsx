@@ -45,7 +45,6 @@ export function InviteUserModal({ isOpen, onClose, recipeId, recipeTitle }: Invi
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          recipeId,
           invitedUserEmail: email.trim().toLowerCase(),
           permission
         })
@@ -59,7 +58,7 @@ export function InviteUserModal({ isOpen, onClose, recipeId, recipeTitle }: Invi
 
       toast({
         title: "Invitation Sent!",
-        description: `${email} has been invited to access "${recipeTitle}" with ${permission.toLowerCase()} permissions.`
+        description: `${email} has been invited to join your recipe book with ${permission.toLowerCase()} permissions.`
       })
 
       // Reset form and close modal

@@ -2,9 +2,9 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Clock, Users, Edit, Trash2 } from "lucide-react"
+import { Clock } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 
 type MealType = 'BREAKFAST' | 'LUNCH' | 'DINNER' | 'DESSERT' | 'SNACK'
 
@@ -26,10 +26,9 @@ interface Recipe {
 
 interface RecipeCardProps {
   recipe: Recipe
-  onDelete?: (id: string) => void
 }
 
-export function RecipeCard({ recipe, onDelete }: RecipeCardProps) {
+export function RecipeCard({ recipe }: RecipeCardProps) {
   const totalTime = (recipe.prepTime || 0) + (recipe.cookTime || 0)
 
   const getMealTypeBadgeColor = (mealType: MealType) => {
@@ -62,10 +61,12 @@ export function RecipeCard({ recipe, onDelete }: RecipeCardProps) {
           <div className="py-1">{recipe.mealType.charAt(0) + recipe.mealType.slice(1).toLowerCase()}</div>
           <div>
             <div className="aspect-video relative overflow-hidden">
-              <img
+              <Image
                 src={recipe.imageUrl || getStockImage(recipe.mealType)}
                 alt={recipe.title}
-                className="w-full h-full object-cover"
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               />
             </div>
           </div>

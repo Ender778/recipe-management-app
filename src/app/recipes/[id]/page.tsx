@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter, useParams } from "next/navigation"
 import { Navbar } from "@/components/navigation/navbar"
@@ -9,8 +9,10 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import { Clock, Users, Edit, Trash2, ArrowLeft, ChevronUp, ChevronDown } from "lucide-react"
+import { Clock, Users, Edit, Trash2, ArrowLeft, ChevronUp, ChevronDown, Share } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
+import { InviteUserModal } from "@/components/invitations/invite-user-modal"
 
 interface Recipe {
   id: string
@@ -99,6 +101,7 @@ export default function RecipePage() {
   const [currentServings, setCurrentServings] = useState<number>(1)
   const [expandedSteps, setExpandedSteps] = useState<string[]>([])
   const [allExpanded, setAllExpanded] = useState(true)
+  const [showInviteModal, setShowInviteModal] = useState(false)
 
   useEffect(() => {
     if (status !== "loading" && !session) {
@@ -106,27 +109,7 @@ export default function RecipePage() {
     }
   }, [session, status, router])
 
-  useEffect(() => {
-    if (session && params.id) {
-      fetchRecipe()
-    }
-  }, [session, params.id])
-
-  useEffect(() => {
-    if (recipe?.servings) {
-      setCurrentServings(recipe.servings)
-    }
-  }, [recipe])
-
-  // Initialize expanded steps when recipe loads
-  useEffect(() => {
-    if (recipe?.instructions) {
-      const allStepValues = recipe.instructions.map((_, index) => `step-${index}`)
-      setExpandedSteps(allStepValues)
-    }
-  }, [recipe])
-
-  const fetchRecipe = async () => {
+  const fetchRecipe = useCallback(async () => {
     try {
       const response = await fetch(`/api/recipes/${params.id}`)
       if (response.ok) {
@@ -143,7 +126,27 @@ export default function RecipePage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [params.id])
+
+  useEffect(() => {
+    if (session && params.id) {
+      fetchRecipe()
+    }
+  }, [session, params.id, fetchRecipe])
+
+  useEffect(() => {
+    if (recipe?.servings) {
+      setCurrentServings(recipe.servings)
+    }
+  }, [recipe])
+
+  // Initialize expanded steps when recipe loads
+  useEffect(() => {
+    if (recipe?.instructions) {
+      const allStepValues = recipe.instructions.map((_, index) => `step-${index}`)
+      setExpandedSteps(allStepValues)
+    }
+  }, [recipe])
 
   const handleDelete = async () => {
     if (!recipe || !confirm("Are you sure you want to delete this recipe?")) return
@@ -254,6 +257,10 @@ export default function RecipePage() {
                     Edit
                   </Link>
                 </Button>
+                <Button variant="outline" onClick={() => setShowInviteModal(true)} size="sm" className="h-8 px-3 text-sm">
+                  <Share className="h-3 w-3 mr-1" />
+                  Share
+                </Button>
                 <Button variant="destructive" onClick={handleDelete} size="sm" className="h-8 px-3 text-sm">
                   <Trash2 className="h-3 w-3 mr-1" />
                   Delete
@@ -275,6 +282,10 @@ export default function RecipePage() {
                     <Edit className="h-4 w-4 mr-2" />
                     Edit
                   </Link>
+                </Button>
+                <Button variant="outline" onClick={() => setShowInviteModal(true)}>
+                  <Share className="h-4 w-4 mr-2" />
+                  Share
                 </Button>
                 <Button variant="destructive" onClick={handleDelete}>
                   <Trash2 className="h-4 w-4 mr-2" />
@@ -324,11 +335,13 @@ export default function RecipePage() {
           </div>
 
           {recipe.imageUrl && (
-            <div className="mb-8">
-              <img
+            <div className="mb-8 relative h-96">
+              <Image
                 src={recipe.imageUrl}
                 alt={recipe.title}
-                className="w-full h-96 object-cover rounded-lg"
+                fill
+                className="object-cover rounded-lg"
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               />
             </div>
           )}
@@ -427,6 +440,14 @@ export default function RecipePage() {
           </Card>
         </div>
       </div>
+
+      {/* Invite User Modal */}
+      <InviteUserModal
+        isOpen={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+        recipeId={recipe.id}
+        recipeTitle={recipe.title}
+      />
     </>
   )
 }

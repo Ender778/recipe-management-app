@@ -43,7 +43,7 @@ export default function SignUpPage() {
         setError(data.error || "Something went wrong")
       }
     } catch (error) {
-      setError("An error occurred")
+      setError(`An error occurred: ${error}`)
     } finally {
       setIsLoading(false)
     }

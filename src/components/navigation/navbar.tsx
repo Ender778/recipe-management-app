@@ -3,7 +3,7 @@
 import { useSession, signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { ChatInterface } from "@/components/chat/chat-interface"
-import { MessageCircle } from "lucide-react"
+import { MessageCircle, Mail, BookOpen } from "lucide-react"
 import Link from "next/link"
 
 export function Navbar() {
@@ -22,6 +22,18 @@ export function Navbar() {
           <div className="flex items-center space-x-4">
             {session ? (
               <>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href="/recipes">
+                    <BookOpen className="h-4 w-4 md:mr-2" />
+                    <span className="hidden md:inline">Recipes</span>
+                  </Link>
+                </Button>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href="/invitations">
+                    <Mail className="h-4 w-4 md:mr-2" />
+                    <span className="hidden md:inline">Invitations</span>
+                  </Link>
+                </Button>
                 <div className="hidden md:block">
                   <ChatInterface
                     trigger={

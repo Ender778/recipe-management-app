@@ -1,8 +1,7 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Clock, Users, Edit, Trash2 } from "lucide-react"
+import { Clock, Users } from "lucide-react"
 import Link from "next/link"
 
 type MealType = 'BREAKFAST' | 'LUNCH' | 'DINNER' | 'DESSERT' | 'SNACK'
@@ -25,10 +24,9 @@ interface Recipe {
 
 interface RecipeListItemProps {
   recipe: Recipe
-  onDelete?: (id: string) => void
 }
 
-export function RecipeListItem({ recipe, onDelete }: RecipeListItemProps) {
+export function RecipeListItem({ recipe }: RecipeListItemProps) {
   const totalTime = (recipe.prepTime || 0) + (recipe.cookTime || 0)
   
   const getMealTypeBadgeColor = (mealType: MealType) => {
@@ -44,13 +42,13 @@ export function RecipeListItem({ recipe, onDelete }: RecipeListItemProps) {
 
   return (
     <Link href={`/recipes/${recipe.id}`}>
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow relative cursor-pointer">
-        <Badge className={`${getMealTypeBadgeColor(recipe.mealType)} text-xs absolute top-4 right-4 z-10`}>
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 px-4 py-2 md:px-4 md:py-4 hover:shadow-md transition-shadow relative cursor-pointer">
+        <Badge className={`${getMealTypeBadgeColor(recipe.mealType)} text-xs absolute top-3 md:top-3 right-4 z-10`}>
           {recipe.mealType.charAt(0) + recipe.mealType.slice(1).toLowerCase()}
         </Badge>
         
         <div className="pr-16">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">{recipe.title}</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-0">{recipe.title}</h3>
           
           {recipe.description && (
             <p className="text-sm text-gray-600 mb-3 line-clamp-2">
@@ -58,24 +56,18 @@ export function RecipeListItem({ recipe, onDelete }: RecipeListItemProps) {
             </p>
           )}
           
-          <div className="flex items-center space-x-4 text-sm text-gray-500 mb-3">
+          <div className="flex items-center space-x-4 text-sm text-gray-500 mb-0">
             {totalTime > 0 && (
               <div className="flex items-center space-x-1">
                 <Clock className="h-4 w-4" />
                 <span>{totalTime} min</span>
               </div>
             )}
-            {recipe.servings && (
-              <div className="hidden md:flex items-center space-x-1">
-                <Users className="h-4 w-4" />
-                <span>{recipe.servings} servings</span>
-              </div>
-            )}
             <span className="hidden md:inline">{recipe.ingredients.length} ingredients</span>
           </div>
 
           {recipe.tags && recipe.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mb-3">
+            <div className="flex flex-wrap gap-1 my-1">
               {recipe.tags.slice(0, 3).map((recipeTag) => (
                 <Badge key={recipeTag.tag.name} variant="secondary" className="text-xs">
                   {recipeTag.tag.name}

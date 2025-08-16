@@ -36,7 +36,7 @@ export default function SignInPage() {
         router.push("/")
       }
     } catch (error) {
-      setError("An error occurred")
+      setError(`An error occurred: ${error}`)
     } finally {
       setIsLoading(false)
     }

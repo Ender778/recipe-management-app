@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter, useParams } from "next/navigation"
 import { Navbar } from "@/components/navigation/navbar"
@@ -36,13 +36,7 @@ export default function EditRecipePage() {
     }
   }, [session, status, router])
 
-  useEffect(() => {
-    if (session && params.id) {
-      fetchRecipe()
-    }
-  }, [session, params.id])
-
-  const fetchRecipe = async () => {
+  const fetchRecipe = useCallback(async () => {
     try {
       const response = await fetch(`/api/recipes/${params.id}`)
       if (response.ok) {
@@ -59,7 +53,13 @@ export default function EditRecipePage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [params.id])
+
+  useEffect(() => {
+    if (session && params.id) {
+      fetchRecipe()
+    }
+  }, [session, params.id, fetchRecipe])
 
   const handleSave = () => {
     router.push(`/recipes/${params.id}`)

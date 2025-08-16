@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
+import type { Session } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase"
 import { z } from "zod"
+import { nanoid } from "nanoid"
+
+const generateId = () => nanoid()
 
 const updateRecipeSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -22,37 +26,52 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const resolvedParams = await params
+    const session = await getServerSession(authOptions) as Session | null
     
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { id } = await params
-
-    const { data: recipe, error } = await supabaseAdmin
+    // Get recipe with book information
+    const { data: recipe, error: recipeError } = await supabaseAdmin
       .from('Recipe')
       .select(`
         *,
         RecipeTag(
           Tag(*)
-        )
+        ),
+        CreatedBy:createdBy(name, email),
+        RecipeBook:bookId(name)
       `)
-      .eq('id', id)
-      .eq('userId', session.user.id)
+      .eq('id', resolvedParams.id)
       .single()
 
-    if (error || !recipe) {
+    if (recipeError || !recipe) {
       return NextResponse.json({ error: "Recipe not found" }, { status: 404 })
     }
 
-    // Transform data to match expected format
-    const recipeWithTags = {
-      ...recipe,
-      tags: recipe.RecipeTag?.map((rt: { Tag: { name: string } }) => ({ tag: rt.Tag })) || []
+    // Check if user has access to the recipe's book
+    const { data: membership, error: membershipError } = await supabaseAdmin
+      .from('BookMember')
+      .select('permission')
+      .eq('bookId', recipe.bookId)
+      .eq('userId', session.user.id)
+      .single()
+
+    if (membershipError || !membership) {
+      return NextResponse.json({ error: "Recipe not found" }, { status: 404 })
     }
 
-    return NextResponse.json(recipeWithTags)
+    // Transform the data to match our expected format
+    const transformedRecipe = {
+      ...recipe,
+      tags: recipe.RecipeTag?.map((rt: { Tag: { name: string } }) => ({ tag: rt.Tag })) || [],
+      createdByUser: recipe.CreatedBy,
+      bookName: recipe.RecipeBook?.name
+    }
+
+    return NextResponse.json(transformedRecipe)
   } catch (error) {
     console.error("Error fetching recipe:", error)
     return NextResponse.json(
@@ -67,99 +86,140 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const resolvedParams = await params
+    const session = await getServerSession(authOptions) as Session | null
     
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { id } = await params
-    const body = await req.json()
-    const data = updateRecipeSchema.parse(body)
-
-    // Check if recipe exists and belongs to user
-    const { data: existingRecipe } = await supabaseAdmin
+    // Get recipe with book information first
+    const { data: recipe, error: recipeError } = await supabaseAdmin
       .from('Recipe')
-      .select('id')
-      .eq('id', id)
-      .eq('userId', session.user.id)
+      .select('bookId')
+      .eq('id', resolvedParams.id)
       .single()
 
-    if (!existingRecipe) {
+    if (recipeError || !recipe) {
       return NextResponse.json({ error: "Recipe not found" }, { status: 404 })
     }
 
+    // Check if user has write access to the recipe's book
+    const { data: membership, error: membershipError } = await supabaseAdmin
+      .from('BookMember')
+      .select('permission')
+      .eq('bookId', recipe.bookId)
+      .eq('userId', session.user.id)
+      .single()
+
+    if (membershipError || !membership || membership.permission !== 'WRITE') {
+      return NextResponse.json({ error: "You don't have permission to edit this recipe" }, { status: 403 })
+    }
+
+    const body = await req.json()
+    const result = updateRecipeSchema.safeParse(body)
+
+    if (!result.success) {
+      return NextResponse.json(
+        { error: "Invalid recipe data", issues: result.error.issues },
+        { status: 400 }
+      )
+    }
+
+    const { title, description, ingredients, instructions, prepTime, cookTime, servings, mealType, imageUrl, tags } = result.data
+
     // Update recipe
-    const { data: recipe, error: updateError } = await supabaseAdmin
+    const { data: updatedRecipe, error: updateError } = await supabaseAdmin
       .from('Recipe')
       .update({
-        title: data.title,
-        description: data.description,
-        ingredients: data.ingredients,
-        instructions: data.instructions,
-        prepTime: data.prepTime,
-        cookTime: data.cookTime,
-        servings: data.servings,
-        imageUrl: data.imageUrl || null,
-        mealType: data.mealType,
+        title,
+        description,
+        ingredients,
+        instructions,
+        prepTime,
+        cookTime,
+        servings,
+        mealType,
+        imageUrl,
+        updatedAt: new Date().toISOString(),
       })
-      .eq('id', id)
+      .eq('id', resolvedParams.id)
       .select()
       .single()
 
     if (updateError) {
-      console.error("Recipe update error:", updateError)
+      console.error("Error updating recipe:", updateError)
       return NextResponse.json(
         { error: "Failed to update recipe" },
         { status: 500 }
       )
     }
 
-    // Handle tags - remove existing ones and add new ones
+    // Delete existing tags
     await supabaseAdmin
       .from('RecipeTag')
       .delete()
-      .eq('recipeId', id)
+      .eq('recipeId', resolvedParams.id)
 
-    const recipeTags = []
-    if (data.tags && data.tags.length > 0) {
-      for (const tagName of data.tags) {
-        // Create tag if it doesn't exist
-        const { data: tag } = await supabaseAdmin
+    // Handle tags if provided
+    if (tags && tags.length > 0) {
+      for (const tagName of tags) {
+        // First, ensure the tag exists (upsert)
+        const { data: tag, error: tagError } = await supabaseAdmin
           .from('Tag')
           .upsert({ name: tagName }, { onConflict: 'name' })
           .select()
           .single()
 
-        if (tag) {
-          // Link recipe to tag
-          await supabaseAdmin
-            .from('RecipeTag')
-            .insert({
-              recipeId: id,
-              tagId: tag.id
-            })
+        if (tagError) {
+          console.error("Error creating/fetching tag:", tagError)
+          continue // Skip this tag if there's an error
+        }
 
-          recipeTags.push({ tag })
+        // Link the tag to the recipe
+        const { error: linkError } = await supabaseAdmin
+          .from('RecipeTag')
+          .insert({
+            id: generateId(),
+            recipeId: updatedRecipe.id,
+            tagId: tag.id
+          })
+
+        if (linkError) {
+          console.error("Error linking tag to recipe:", linkError)
         }
       }
     }
 
-    // Return updated recipe with tags
-    const updatedRecipe = {
-      ...recipe,
-      tags: recipeTags
+    // Fetch the complete recipe with tags and creator info
+    const { data: completeRecipe, error: fetchError } = await supabaseAdmin
+      .from('Recipe')
+      .select(`
+        *,
+        RecipeTag(
+          Tag(*)
+        ),
+        CreatedBy:createdBy(name, email),
+        RecipeBook:bookId(name)
+      `)
+      .eq('id', updatedRecipe.id)
+      .single()
+
+    if (fetchError) {
+      console.error("Error fetching complete recipe:", fetchError)
+      return NextResponse.json(updatedRecipe) // Return basic recipe if tag fetch fails
     }
 
-    return NextResponse.json(updatedRecipe)
+    // Transform the data
+    const transformedRecipe = {
+      ...completeRecipe,
+      tags: completeRecipe.RecipeTag?.map((rt: { Tag: { name: string } }) => ({ tag: rt.Tag })) || [],
+      createdByUser: completeRecipe.CreatedBy,
+      bookName: completeRecipe.RecipeBook?.name
+    }
+
+    return NextResponse.json(transformedRecipe)
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: "Validation failed", details: error.errors },
-        { status: 400 }
-      )
-    }
-
     console.error("Error updating recipe:", error)
     return NextResponse.json(
       { error: "Internal server error" },
@@ -173,40 +233,55 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const resolvedParams = await params
+    const session = await getServerSession(authOptions) as Session | null
     
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { id } = await params
-
-    // Check if recipe exists and belongs to user
-    const { data: existingRecipe } = await supabaseAdmin
+    // Get recipe with book information first
+    const { data: recipe, error: recipeError } = await supabaseAdmin
       .from('Recipe')
-      .select('id')
-      .eq('id', id)
-      .eq('userId', session.user.id)
+      .select('bookId')
+      .eq('id', resolvedParams.id)
       .single()
 
-    if (!existingRecipe) {
+    if (recipeError || !recipe) {
       return NextResponse.json({ error: "Recipe not found" }, { status: 404 })
     }
 
-    // Delete recipe (tags will be deleted automatically due to cascade)
+    // Check if user has write access to the recipe's book
+    const { data: membership, error: membershipError } = await supabaseAdmin
+      .from('BookMember')
+      .select('permission')
+      .eq('bookId', recipe.bookId)
+      .eq('userId', session.user.id)
+      .single()
+
+    if (membershipError || !membership || membership.permission !== 'WRITE') {
+      return NextResponse.json({ error: "You don't have permission to delete this recipe" }, { status: 403 })
+    }
+
+    // Delete recipe tags first (foreign key constraint)
+    await supabaseAdmin
+      .from('RecipeTag')
+      .delete()
+      .eq('recipeId', resolvedParams.id)
+
+    // Delete the recipe
     const { error } = await supabaseAdmin
       .from('Recipe')
       .delete()
-      .eq('id', id)
+      .eq('id', resolvedParams.id)
 
     if (error) {
-      console.error("Recipe deletion error:", error)
+      console.error("Error deleting recipe:", error)
       return NextResponse.json(
         { error: "Failed to delete recipe" },
         { status: 500 }
       )
     }
-
     return NextResponse.json({ message: "Recipe deleted successfully" })
   } catch (error) {
     console.error("Error deleting recipe:", error)

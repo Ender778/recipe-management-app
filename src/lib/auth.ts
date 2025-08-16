@@ -1,9 +1,10 @@
-import { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
 import { supabaseAdmin } from "./supabase"
+import type { JWT } from "next-auth/jwt"
 
-export const authOptions: NextAuthOptions = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const authOptions: any = {
   providers: [
     CredentialsProvider({
       name: "credentials",
@@ -48,13 +49,14 @@ export const authOptions: NextAuthOptions = {
     })
   ],
   session: {
-    strategy: "jwt"
+    strategy: "jwt" as const
   },
   pages: {
     signIn: "/auth/signin",
   },
   callbacks: {
-    async jwt({ token, user }) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    async jwt({ token, user }: { token: JWT; user?: any }) {
       if (user) {
         return {
           ...token,
@@ -63,7 +65,8 @@ export const authOptions: NextAuthOptions = {
       }
       return token
     },
-    async session({ session, token }) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    async session({ session, token }: { session: any; token: JWT }) {
       return {
         ...session,
         user: {

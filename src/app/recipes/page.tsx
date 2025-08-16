@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Navbar } from "@/components/navigation/navbar"
@@ -11,8 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
-import { Search, Plus, X, MessageCircle, Grid3X3, List, LayoutGrid } from "lucide-react"
+import { Search, Plus, X, MessageCircle, LayoutGrid, List } from "lucide-react"
 import Link from "next/link"
 
 type MealType = 'BREAKFAST' | 'LUNCH' | 'DINNER' | 'DESSERT' | 'SNACK'
@@ -57,10 +56,6 @@ export default function RecipesPage() {
     }
   }, [session])
 
-  useEffect(() => {
-    filterRecipes()
-  }, [recipes, searchTerm, selectedTags])
-
   const fetchRecipes = async () => {
     try {
       console.log("Fetching recipes...")
@@ -92,7 +87,7 @@ export default function RecipesPage() {
     }
   }
 
-  const filterRecipes = () => {
+  const filterRecipes = useCallback(() => {
     let filtered = recipes
 
     // Filter by search term
@@ -114,26 +109,12 @@ export default function RecipesPage() {
     }
 
     setFilteredRecipes(filtered)
-  }
+  }, [recipes, searchTerm, selectedTags])
 
-  const handleDeleteRecipe = async (recipeId: string) => {
-    if (!confirm("Are you sure you want to delete this recipe?")) return
+  useEffect(() => {
+    filterRecipes()
+  }, [filterRecipes])
 
-    try {
-      const response = await fetch(`/api/recipes/${recipeId}`, {
-        method: "DELETE",
-      })
-
-      if (response.ok) {
-        setRecipes(prev => prev.filter(recipe => recipe.id !== recipeId))
-      } else {
-        alert("Failed to delete recipe")
-      }
-    } catch (error) {
-      console.error("Error deleting recipe:", error)
-      alert("Failed to delete recipe")
-    }
-  }
 
   const toggleTag = (tag: string) => {
     setSelectedTags(prev =>
@@ -313,12 +294,11 @@ export default function RecipesPage() {
                         {mealType.charAt(0) + mealType.slice(1).toLowerCase()} ({mealRecipes.length})
                       </h2>
                       {/* Mobile List View */}
-                      <div className="md:hidden space-y-4">
+                      <div className="md:hidden space-y-4 flex flex-col">
                         {mealRecipes.map((recipe) => (
                           <RecipeListItem
                             key={recipe.id}
                             recipe={recipe}
-                            onDelete={handleDeleteRecipe}
                           />
                         ))}
                       </div>
@@ -331,18 +311,16 @@ export default function RecipesPage() {
                               <RecipeCard
                                 key={recipe.id}
                                 recipe={recipe}
-                                onDelete={handleDeleteRecipe}
-                              />
+                                  />
                             ))}
                           </div>
                         ) : (
-                          <div className="space-y-4">
+                          <div className="space-y-4 flex flex-col">
                             {mealRecipes.map((recipe) => (
                               <RecipeListItem
                                 key={recipe.id}
                                 recipe={recipe}
-                                onDelete={handleDeleteRecipe}
-                              />
+                                  />
                             ))}
                           </div>
                         )}
@@ -354,12 +332,11 @@ export default function RecipesPage() {
                 // Standard View (List on mobile, viewMode toggle on desktop)
                 <>
                   {/* Mobile List View */}
-                  <div className="md:hidden space-y-4">
+                  <div className="md:hidden space-y-4 flex flex-col">
                     {getSortedRecipes().map((recipe) => (
                       <RecipeListItem
                         key={recipe.id}
                         recipe={recipe}
-                        onDelete={handleDeleteRecipe}
                       />
                     ))}
                   </div>
@@ -372,17 +349,15 @@ export default function RecipesPage() {
                           <RecipeCard
                             key={recipe.id}
                             recipe={recipe}
-                            onDelete={handleDeleteRecipe}
                           />
                         ))}
                       </div>
                     ) : (
-                      <div className="space-y-4">
+                      <div className="space-y-4 flex flex-col">
                         {getSortedRecipes().map((recipe) => (
                           <RecipeListItem
                             key={recipe.id}
                             recipe={recipe}
-                            onDelete={handleDeleteRecipe}
                           />
                         ))}
                       </div>

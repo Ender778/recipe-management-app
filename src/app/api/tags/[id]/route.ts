@@ -67,7 +67,7 @@ export async function PUT(
     const { name, color } = result.data
 
     // Check if another tag with this name already exists
-    const { data: existingTag, error: checkError } = await supabaseAdmin
+    const { data: existingTag } = await supabaseAdmin
       .from('Tag')
       .select('id')
       .eq('name', name)

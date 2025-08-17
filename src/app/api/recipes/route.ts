@@ -86,7 +86,7 @@ export async function GET(req: NextRequest) {
     // Transform the data to match our expected format
     const transformedRecipes = recipes?.map(recipe => {
       console.log("Recipe tags raw data for recipe:", recipe.title, recipe.RecipeTag)
-      const tags = recipe.RecipeTag?.map((rt: any) => {
+      const tags = recipe.RecipeTag?.map((rt: { Tag: unknown }) => {
         console.log("Processing recipe tag:", rt)
         return { tag: rt.Tag }
       }) || []

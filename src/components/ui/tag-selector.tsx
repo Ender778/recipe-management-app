@@ -38,7 +38,7 @@ interface TagSelectorProps {
 export function TagSelector({ selectedTags, onTagsChange, placeholder = "Select tags..." }: TagSelectorProps) {
   const [open, setOpen] = React.useState(false)
   const [availableTags, setAvailableTags] = React.useState<Tag[]>([])
-  const [loading, setLoading] = React.useState(false)
+  const [, setLoading] = React.useState(false)
   const [showCreateDialog, setShowCreateDialog] = React.useState(false)
   const [newTagName, setNewTagName] = React.useState("")
   const [searchValue, setSearchValue] = React.useState("")
@@ -149,7 +149,7 @@ export function TagSelector({ selectedTags, onTagsChange, placeholder = "Select 
                       }}
                     >
                       <Plus className="mr-2 h-4 w-4" />
-                      Create "{searchValue}"
+                      Create &quot;{searchValue}&quot;
                     </Button>
                   ) : (
                     "No tags found."

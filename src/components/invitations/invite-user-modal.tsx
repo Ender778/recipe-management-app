@@ -18,7 +18,7 @@ interface InviteUserModalProps {
 
 type Permission = "READ" | "WRITE"
 
-export function InviteUserModal({ isOpen, onClose, recipeId, recipeTitle }: InviteUserModalProps) {
+export function InviteUserModal({ isOpen, onClose, recipeTitle }: InviteUserModalProps) {
   const [email, setEmail] = useState("")
   const [permission, setPermission] = useState<Permission>("READ")
   const [isLoading, setIsLoading] = useState(false)

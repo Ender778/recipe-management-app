@@ -13,7 +13,7 @@ const createTagSchema = z.object({
   color: z.string().optional(),
 })
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     const session = await getServerSession(authOptions) as Session | null
     
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
     const { name, color } = result.data
 
     // Check if tag already exists
-    const { data: existingTag, error: checkError } = await supabaseAdmin
+    const { data: existingTag } = await supabaseAdmin
       .from('Tag')
       .select('id')
       .eq('name', name)

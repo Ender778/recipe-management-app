@@ -1,7 +1,7 @@
 "use client"
 
 import { Badge } from "@/components/ui/badge"
-import { Clock, Users } from "lucide-react"
+import { Clock } from "lucide-react"
 import Link from "next/link"
 
 type MealType = 'BREAKFAST' | 'LUNCH' | 'DINNER' | 'DESSERT' | 'SNACK'

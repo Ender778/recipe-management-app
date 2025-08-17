@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ImageUpload } from "@/components/ui/image-upload"
 
 interface StructuredIngredient {
   quantity: string
@@ -314,16 +315,11 @@ export function RecipeForm({ recipe, onSave }: RecipeFormProps) {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="imageUrl">Image URL</Label>
-            <Input
-              id="imageUrl"
-              type="url"
-              value={formData.imageUrl}
-              onChange={(e) => setFormData(prev => ({ ...prev, imageUrl: e.target.value }))}
-              disabled={isLoading}
-            />
-          </div>
+          <ImageUpload
+            currentImage={formData.imageUrl}
+            onImageUpload={(url) => setFormData(prev => ({ ...prev, imageUrl: url }))}
+            disabled={isLoading}
+          />
 
           <div className="space-y-4">
             <div className="flex justify-between items-center">

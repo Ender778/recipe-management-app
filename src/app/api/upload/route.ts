@@ -37,19 +37,31 @@ export async function POST(request: NextRequest) {
     
     // Create uploads directory if it doesn't exist
     const uploadsDir = join(process.cwd(), 'public', 'uploads')
+    console.log("Upload directory path:", uploadsDir)
+    
     try {
       await mkdir(uploadsDir, { recursive: true })
+      console.log("Directory created successfully")
     } catch (error) {
-      // Directory might already exist
+      console.log("Directory creation error (might already exist):", error)
     }
 
     // Save file
     const buffer = await file.arrayBuffer()
     const filePath = join(uploadsDir, filename)
-    await writeFile(filePath, Buffer.from(buffer))
+    console.log("Saving file to:", filePath)
+    
+    try {
+      await writeFile(filePath, Buffer.from(buffer))
+      console.log("File saved successfully")
+    } catch (writeError) {
+      console.error("File write error:", writeError)
+      throw writeError
+    }
 
     // Return the public URL
     const url = `/uploads/${filename}`
+    console.log("Returning URL:", url)
     
     return NextResponse.json({ url }, { status: 200 })
 

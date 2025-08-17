@@ -15,21 +15,27 @@ interface ImageUploadProps {
 export function ImageUpload({ onImageUpload, currentImage, disabled }: ImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(currentImage || null)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
+    // Clear previous messages
+    setError(null)
+    setSuccess(null)
+
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      alert('Please select an image file')
+      setError('Please select an image file (JPG, PNG, GIF)')
       return
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      alert('Image must be less than 5MB')
+      setError('Image must be less than 5MB. Please choose a smaller file.')
       return
     }
 
@@ -53,15 +59,23 @@ export function ImageUpload({ onImageUpload, currentImage, disabled }: ImageUplo
       })
 
       if (!response.ok) {
-        throw new Error('Upload failed')
+        const errorData = await response.json().catch(() => ({ error: 'Server error occurred' }))
+        throw new Error(errorData.error || `Upload failed (Error ${response.status})`)
       }
 
       const { url } = await response.json()
       onImageUpload(url)
+      setSuccess('Image uploaded successfully!')
 
     } catch (error) {
-      console.error('Upload error:', error)
-      alert('Failed to upload image. Please try again.')
+      // Fallback: use the preview URL (base64) directly
+      if (previewUrl && previewUrl.startsWith('data:')) {
+        onImageUpload(previewUrl)
+        setSuccess('Image saved! (Using backup method)')
+        return
+      }
+      
+      setError(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
       setPreviewUrl(currentImage || null)
     } finally {
       setIsUploading(false)
@@ -75,6 +89,8 @@ export function ImageUpload({ onImageUpload, currentImage, disabled }: ImageUplo
   const handleRemoveImage = () => {
     setPreviewUrl(null)
     onImageUpload('')
+    setError(null)
+    setSuccess(null)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -87,6 +103,20 @@ export function ImageUpload({ onImageUpload, currentImage, disabled }: ImageUplo
   return (
     <div className="space-y-4">
       <Label>Recipe Image</Label>
+      
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
+          {error}
+        </div>
+      )}
+      
+      {/* Success Message */}
+      {success && (
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md text-sm">
+          {success}
+        </div>
+      )}
       
       {previewUrl ? (
         <div className="relative w-full max-w-md">

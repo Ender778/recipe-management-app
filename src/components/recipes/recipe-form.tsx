@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ImageUpload } from "@/components/ui/image-upload"
+import { TagSelector } from "@/components/ui/tag-selector"
 
 interface StructuredIngredient {
   quantity: string
@@ -102,7 +103,6 @@ export function RecipeForm({ recipe, onSave }: RecipeFormProps) {
     return [{ quantity: "1", unit: "ea", name: "" }]
   })
   
-  const [newTag, setNewTag] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const router = useRouter()
@@ -144,22 +144,6 @@ export function RecipeForm({ recipe, onSave }: RecipeFormProps) {
     }))
   }
 
-  const addTag = () => {
-    if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        tags: [...prev.tags, newTag.trim()]
-      }))
-      setNewTag("")
-    }
-  }
-
-  const removeTag = (tagToRemove: string) => {
-    setFormData(prev => ({
-      ...prev,
-      tags: prev.tags.filter(tag => tag !== tagToRemove)
-    }))
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -415,32 +399,13 @@ export function RecipeForm({ recipe, onSave }: RecipeFormProps) {
             ))}
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-2">
             <Label>Tags</Label>
-            <div className="flex gap-2">
-              <Input
-                value={newTag}
-                onChange={(e) => setNewTag(e.target.value)}
-                placeholder="Add a tag"
-                disabled={isLoading}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
-                    addTag()
-                  }
-                }}
-              />
-              <Button type="button" variant="outline" onClick={addTag} disabled={isLoading}>
-                Add
-              </Button>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {formData.tags.map((tag) => (
-                <Badge key={tag} variant="secondary" className="cursor-pointer" onClick={() => removeTag(tag)}>
-                  {tag} ×
-                </Badge>
-              ))}
-            </div>
+            <TagSelector
+              selectedTags={formData.tags}
+              onTagsChange={(tags) => setFormData(prev => ({ ...prev, tags }))}
+              placeholder="Select or create tags..."
+            />
           </div>
 
           <div className="flex justify-end space-x-4">

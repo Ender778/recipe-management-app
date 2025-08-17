@@ -56,9 +56,7 @@ export async function GET(req: NextRequest) {
       .from('Recipe')
       .select(`
         *,
-        RecipeTag(
-          Tag(*)
-        ),
+        RecipeTag(*,Tag(*)),
         CreatedBy:createdBy(name, email),
         RecipeBook:bookId(name)
       `)
@@ -86,12 +84,20 @@ export async function GET(req: NextRequest) {
     }
 
     // Transform the data to match our expected format
-    const transformedRecipes = recipes?.map(recipe => ({
-      ...recipe,
-      tags: recipe.RecipeTag?.map((rt: { Tag: { name: string } }) => ({ tag: rt.Tag })) || [],
-      createdByUser: recipe.CreatedBy,
-      bookName: recipe.RecipeBook?.name
-    })) || []
+    const transformedRecipes = recipes?.map(recipe => {
+      console.log("Recipe tags raw data for recipe:", recipe.title, recipe.RecipeTag)
+      const tags = recipe.RecipeTag?.map((rt: any) => {
+        console.log("Processing recipe tag:", rt)
+        return { tag: rt.Tag }
+      }) || []
+      console.log("Final transformed tags for", recipe.title, ":", tags)
+      return {
+        ...recipe,
+        tags,
+        createdByUser: recipe.CreatedBy,
+        bookName: recipe.RecipeBook?.name
+      }
+    }) || []
 
     // Apply tag filter if needed (client-side for now)
     let filteredRecipes = transformedRecipes
@@ -184,30 +190,37 @@ export async function POST(req: NextRequest) {
 
     // Handle tags if provided
     if (tags && tags.length > 0) {
+      console.log("Processing tags:", tags)
       for (const tagName of tags) {
         // First, ensure the tag exists (upsert)
         const { data: tag, error: tagError } = await supabaseAdmin
           .from('Tag')
-          .upsert({ name: tagName }, { onConflict: 'name' })
+          .upsert({ 
+            id: generateId(),
+            name: tagName 
+          }, { onConflict: 'name' })
           .select()
           .single()
 
         if (tagError) {
-          console.error("Error creating/fetching tag:", tagError)
+          console.error("Error creating/fetching tag:", tagError, tagName)
           continue // Skip this tag if there's an error
         }
+
+        console.log("Tag created/found:", tag)
 
         // Link the tag to the recipe
         const { error: linkError } = await supabaseAdmin
           .from('RecipeTag')
           .insert({
-            id: generateId(),
             recipeId: recipe.id,
             tagId: tag.id
           })
 
         if (linkError) {
           console.error("Error linking tag to recipe:", linkError)
+        } else {
+          console.log("Tag linked successfully:", tagName)
         }
       }
     }
@@ -217,9 +230,7 @@ export async function POST(req: NextRequest) {
       .from('Recipe')
       .select(`
         *,
-        RecipeTag(
-          Tag(*)
-        ),
+        RecipeTag(*,Tag(*)),
         CreatedBy:createdBy(name, email),
         RecipeBook:bookId(name)
       `)

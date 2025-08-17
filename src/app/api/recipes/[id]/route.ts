@@ -167,7 +167,10 @@ export async function PUT(
         // First, ensure the tag exists (upsert)
         const { data: tag, error: tagError } = await supabaseAdmin
           .from('Tag')
-          .upsert({ name: tagName }, { onConflict: 'name' })
+          .upsert({ 
+            id: generateId(),
+            name: tagName 
+          }, { onConflict: 'name' })
           .select()
           .single()
 
@@ -180,7 +183,6 @@ export async function PUT(
         const { error: linkError } = await supabaseAdmin
           .from('RecipeTag')
           .insert({
-            id: generateId(),
             recipeId: updatedRecipe.id,
             tagId: tag.id
           })

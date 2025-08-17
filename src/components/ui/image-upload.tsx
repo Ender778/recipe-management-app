@@ -42,42 +42,20 @@ export function ImageUpload({ onImageUpload, currentImage, disabled }: ImageUplo
     setIsUploading(true)
 
     try {
-      // Create preview
+      // Create preview and use it directly (base64 approach)
       const reader = new FileReader()
       reader.onload = (e) => {
-        setPreviewUrl(e.target?.result as string)
+        const base64Url = e.target?.result as string
+        setPreviewUrl(base64Url)
+        onImageUpload(base64Url)
+        setSuccess('Image uploaded successfully!')
+        setIsUploading(false)
       }
       reader.readAsDataURL(file)
 
-      // Upload to server
-      const formData = new FormData()
-      formData.append('image', file)
-
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Server error occurred' }))
-        throw new Error(errorData.error || `Upload failed (Error ${response.status})`)
-      }
-
-      const { url } = await response.json()
-      onImageUpload(url)
-      setSuccess('Image uploaded successfully!')
-
     } catch (error) {
-      // Fallback: use the preview URL (base64) directly
-      if (previewUrl && previewUrl.startsWith('data:')) {
-        onImageUpload(previewUrl)
-        setSuccess('Image saved! (Using backup method)')
-        return
-      }
-      
-      setError(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      setError(`Failed to process image: ${error instanceof Error ? error.message : 'Unknown error'}`)
       setPreviewUrl(currentImage || null)
-    } finally {
       setIsUploading(false)
       // Reset input
       if (fileInputRef.current) {
